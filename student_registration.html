@@ -1,0 +1,179 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa 生徒情報登録</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--muted:#6b7280;--accent:#2563eb;--success:#059669}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px}
+.container{max-width:600px;margin:20px auto;padding:0 16px}
+.card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:24px}
+h2{margin:0 0 8px;font-size:18px}.sub{color:var(--muted);font-size:14px;margin:0 0 20px}
+.field{display:flex;flex-direction:column;gap:6px;margin:16px 0}
+.row{display:flex;gap:12px;flex-wrap:wrap}
+input{padding:12px;border:1px solid #cbd5e1;border-radius:10px;font:inherit;font-size:14px}
+.btn{padding:12px 20px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font:inherit;font-size:14px}
+.primary{background:var(--accent);color:#fff;border-color:transparent}
+.secondary{background:#f8fafc;color:#475569}
+.err{color:#dc2626;font-size:12px;margin-top:4px}
+.success{color:var(--success);font-size:12px;margin-top:4px}
+.info{background:#eff6ff;border:1px solid #bfdbfe;border-radius:10px;padding:16px;margin:16px 0;color:#1e40af;font-size:14px;line-height:1.5}
+.actions{display:flex;gap:12px;justify-content:flex-end;margin-top:24px;flex-wrap:wrap}
+label{font-weight:500;color:#374151}
+.required{color:#dc2626}
+</style>
+</head><body>
+<header>
+  <div><strong>生徒情報登録</strong> <span class="muted" id="guardianInfo"></span></div>
+  <div>
+    <button class="btn secondary" onclick="location.href='guardian.html'">ダッシュボードに戻る</button>
+    <button class="btn" onclick="ToriCa.guardianLogout();location.href='guardian_auth.html'">ログアウト</button>
+  </div>
+</header>
+
+<div class="container">
+  <section class="card">
+    <h2>お子様の情報を登録してください</h2>
+    <p class="sub">ToriCaカードでの移動追跡を開始するために必要な情報です</p>
+    
+    <div class="info">
+      <strong>登録に必要な情報：</strong><br>
+      • ToriCaシリアル番号（カードに記載されています）<br>
+      • お子様の基本情報（氏名、クラス等）<br>
+      ※ 登録後、すぐに移動ログの追跡が開始されます
+    </div>
+
+    <form id="studentForm">
+      <div class="field">
+        <label>ToriCa シリアル番号 <span class="required">*</span></label>
+        <input id="serial" placeholder="例: SER-0001" required/>
+        <div class="muted" style="font-size:12px">カードに記載されているシリアル番号を入力してください</div>
+      </div>
+
+      <div class="field">
+        <label>生徒 氏名 <span class="required">*</span></label>
+        <input id="studentName" placeholder="例: 田中 太郎" required/>
+      </div>
+
+      <div class="row">
+        <div class="field" style="flex:2">
+          <label>クラス <span class="required">*</span></label>
+          <input id="grade" placeholder="例: 高1-2" required/>
+        </div>
+        <div class="field" style="flex:1">
+          <label>出席番号</label>
+          <input id="number" placeholder="例: 15" type="number"/>
+        </div>
+        <div class="field" style="flex:1">
+          <label>班</label>
+          <input id="group" placeholder="例: A"/>
+        </div>
+      </div>
+
+      <div id="message" class="err"></div>
+      <div id="successMessage" class="success"></div>
+
+      <div class="actions">
+        <button type="button" class="btn secondary" onclick="location.href='guardian.html'">
+          後で登録する
+        </button>
+        <button type="submit" class="btn primary">
+          登録して開始
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <!-- 既に登録済みの生徒がいる場合の表示 -->
+  <section class="card" id="existingStudents" style="display:none;margin-top:20px">
+    <h2>登録済みの生徒</h2>
+    <div id="studentList"></div>
+  </section>
+</div>
+
+<script src="./app.js"></script>
+<script>
+(function(){
+  // ログインチェック
+  const sess = ToriCa.guardianSession();
+  if (!sess){ 
+    location.href="guardian_auth.html"; 
+    return; 
+  }
+  
+  document.getElementById("guardianInfo").textContent = `（${sess.email}）`;
+
+  // 既存の生徒情報表示
+  function displayExistingStudents() {
+    const students = ToriCa.getGuardianStudents(sess.email);
+    if (students && students.length > 0) {
+      document.getElementById("existingStudents").style.display = "block";
+      document.getElementById("studentList").innerHTML = students.map(s => 
+        `<div style="padding:12px;border:1px solid #e5e7eb;border-radius:8px;margin:8px 0">
+          <strong>${s.name}</strong> (${s.grade}) - カード: ${s.serial}
+          <button class="btn" style="margin-left:12px;padding:4px 8px;font-size:12px" onclick="editStudent('${s.serial}')">編集</button>
+        </div>`
+      ).join("");
+    }
+  }
+
+  // フォーム送信
+  document.getElementById("studentForm").onsubmit = (e) => {
+    e.preventDefault();
+    
+    const studentData = {
+      serial: document.getElementById("serial").value.trim(),
+      name: document.getElementById("studentName").value.trim(),
+      grade: document.getElementById("grade").value.trim(),
+      number: document.getElementById("number").value.trim(),
+      group: document.getElementById("group").value.trim()
+    };
+
+    // バリデーション
+    if (!studentData.serial || !studentData.name || !studentData.grade) {
+      document.getElementById("message").textContent = "必須項目を入力してください";
+      document.getElementById("successMessage").textContent = "";
+      return;
+    }
+
+    // 生徒情報登録（app.jsの関数を呼び出し）
+    const result = ToriCa.registerStudent(sess.email, studentData);
+    
+    if (result.ok) {
+      document.getElementById("message").textContent = "";
+      document.getElementById("successMessage").textContent = "生徒情報を登録しました！移動ログの追跡を開始します。";
+      
+      // フォームをリセット
+      document.getElementById("studentForm").reset();
+      
+      // 既存生徒リストを更新
+      displayExistingStudents();
+      
+      // 3秒後にダッシュボードに移動
+      setTimeout(() => {
+        location.href = "guardian.html";
+      }, 3000);
+      
+    } else {
+      document.getElementById("message").textContent = result.msg || "登録に失敗しました";
+      document.getElementById("successMessage").textContent = "";
+    }
+  };
+
+  // 生徒編集機能（簡易版）
+  window.editStudent = (serial) => {
+    const students = ToriCa.getGuardianStudents(sess.email);
+    const student = students.find(s => s.serial === serial);
+    if (student) {
+      document.getElementById("serial").value = student.serial;
+      document.getElementById("studentName").value = student.name;
+      document.getElementById("grade").value = student.grade;
+      document.getElementById("number").value = student.number || "";
+      document.getElementById("group").value = student.group || "";
+    }
+  };
+
+  // 初期表示
+  displayExistingStudents();
+})();
+</script>
+</body></html>
