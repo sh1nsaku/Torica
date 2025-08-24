@@ -1,0 +1,31 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa 教師ログイン</title>
+<style>
+:root{--bg:#f5f7fb;--card:#fff;--muted:#6b7280;--accent:#2563eb}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}
+.card{width:100%;max-width:420px;background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.08);padding:20px}
+h1{margin:0 0 10px;font-size:20px}.sub{color:var(--muted);font-size:13px;margin:0 0 16px}
+.field{display:flex;flex-direction:column;gap:6px;margin:10px 0} input{padding:11px;border-radius:12px;border:1px solid #cbd5e1;font:inherit}
+.btn{width:100%;padding:12px;border-radius:12px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+.primary{background:var(--accent);color:#fff;border-color:transparent}
+.err{color:#dc2626;font-size:12px;margin-top:6px}
+</style>
+</head><body>
+<main class="card">
+  <h1>教師ログイン</h1>
+  <p class="sub">デモ: <code>teacher@example.com</code> / <code>torica123</code></p>
+  <div class="field"><label>メール</label><input id="email" type="email" placeholder="teacher@example.com"/></div>
+  <div class="field"><label>パスワード</label><input id="pass" type="password" placeholder="••••••••"/></div>
+  <button class="btn primary" id="loginBtn">ログイン</button>
+  <div id="err" class="err"></div>
+</main>
+<script src="./app.js"></script>
+<script>
+loginBtn.onclick = ()=>{
+  const u = ToriCa.teacherLogin(email.value.trim(), pass.value);
+  if (!u){ err.textContent="メールまたはパスワードが違います"; return; }
+  location.href="teacher.html";
+};
+</script>
+</body></html>

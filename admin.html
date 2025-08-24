@@ -1,0 +1,120 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa データビューア</title>
+<style>
+:root{--bg:#f5f7fb;--muted:#6b7280}
+*{box-sizing:border-box} body{margin:0;background:#f5f7fb;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px}
+.container{max-width:1100px;margin:18px auto;padding:0 16px}
+.card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:14px;margin-bottom:12px}
+h2{margin:0 0 8px;font-size:18px} .muted{color:var(--muted)}
+table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:8px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}
+.btn{padding:9px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;margin-right:6px}
+.primary{background:#2563eb;color:#fff;border-color:transparent}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#eef2ff;display:inline-block}
+pre{background:#0b1020;color:#e5e7eb;border-radius:12px;padding:12px;overflow:auto;font-size:12px}
+</style>
+</head><body>
+<header>
+  <div><strong>ToriCa データビューア</strong> <span class="muted">（この端末のブラウザ内データ）</span></div>
+  <div>
+    <button class="btn" onclick="location.href='teacher.html'">教師</button>
+    <button class="btn" onclick="location.href='guardian.html'">保護者</button>
+    <button class="btn" onclick="location.href='guest.html?card=STU1234&place=校門'">ゲスト</button>
+  </div>
+</header>
+<div class="container">
+  <section class="card">
+    <h2>操作</h2>
+    <button class="btn" onclick="render()">最新に更新</button>
+    <button class="btn primary" onclick="exportJSON()">全データをJSONで保存</button>
+    <button class="btn" onclick="if(confirm('本日のログを空にしますか？')){ clearTodayLogs(); render(); }">今日のログをクリア</button>
+    <button class="btn" onclick="if(confirm('LocalStorageを全消去します。よろしいですか？')){ localStorage.clear(); render(); }">全データ初期化</button>
+    <div class="muted" style="margin-top:6px">※この操作はこのブラウザだけに影響します。他の端末には影響しません。</div>
+  </section>
+
+  <section class="card">
+    <h2>学生（torica_students）</h2>
+    <div style="overflow:auto">
+      <table id="tblStudents"><thead><tr><th>カードID</th><th>氏名</th><th>学年</th><th>班</th><th>出席番号</th><th>シリアル</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>保護者（torica_guardians）</h2>
+    <div style="overflow:auto">
+      <table id="tblGuardians"><thead><tr><th>メール</th><th>氏名</th><th>子カード</th><th>子氏名</th><th>子クラス</th><th>子班</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>教師（torica_teachers）</h2>
+    <div style="overflow:auto">
+      <table id="tblTeachers"><thead><tr><th>メール</th><th>氏名</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>本日のログ（torica_logs[YYYY-MM-DD]）</h2>
+    <div style="overflow:auto">
+      <table id="tblLogs"><thead><tr><th>時刻</th><th>氏名</th><th>学年</th><th>班</th><th>カードID</th><th>地点</th><th>入力元</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>オープン緊急（torica_emergencies）</h2>
+    <div style="overflow:auto">
+      <table id="tblEmg"><thead><tr><th>受信</th><th>氏名</th><th>学年</th><th>班</th><th>カード</th><th>場所</th><th>lat</th><th>lng</th></tr></thead><tbody></tbody></table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Raw JSON</h2>
+    <pre id="raw"></pre>
+  </section>
+</div>
+
+<script>
+const K = { STUDENTS:"torica_students", GUARDIANS:"torica_guardians", TEACHERS:"torica_teachers", LOGS:"torica_logs", EMERGENCIES:"torica_emergencies" };
+const today = ()=> new Date().toISOString().slice(0,10);
+function jget(k, d){ try{ return JSON.parse(localStorage.getItem(k)||d);}catch(e){ return JSON.parse(d);} }
+function fillTable(tbody, rows, mapper){ tbody.innerHTML = rows.map(mapper).join(""); }
+
+function render(){
+  const students = jget(K.STUDENTS,"{}");
+  const guardians = jget(K.GUARDIANS,"[]");
+  const teachers = jget(K.TEACHERS,"[]");
+  const allLogs = jget(K.LOGS,"{}");
+  const logs = allLogs[today()] || [];
+  const emg = (jget(K.EMERGENCIES,"[]")||[]).filter(e=>e.status==="open");
+
+  const sBody = document.querySelector("#tblStudents tbody");
+  const sRows = Object.entries(students).map(([cardId,s])=>({cardId,...s}));
+  fillTable(sBody, sRows, r=>`<tr><td>${r.cardId}</td><td>${r.name||""}</td><td>${r.grade||""}</td><td>${r.group||""}</td><td>${r.number||""}</td><td>${r.serial||""}</td></tr>`);
+
+  const gBody = document.querySelector("#tblGuardians tbody");
+  fillTable(gBody, guardians, g=>`<tr><td>${g.email}</td><td>${g.name||""}</td><td>${g.child?.cardId||""}</td><td>${g.child?.name||""}</td><td>${g.child?.grade||""}</td><td>${g.child?.group||""}</td></tr>`);
+
+  const tBody = document.querySelector("#tblTeachers tbody");
+  fillTable(tBody, teachers, t=>`<tr><td>${t.email}</td><td>${t.name||""}</td></tr>`);
+
+  const lBody = document.querySelector("#tblLogs tbody");
+  fillTable(lBody, logs, l=>`<tr><td>${fmt(l.ts)}</td><td>${l.name}</td><td>${l.grade}</td><td>${l.group||"-"}</td><td>${l.cardId}</td><td>${l.place}</td><td>${l.source||"-"}</td></tr>`);
+
+  const eBody = document.querySelector("#tblEmg tbody");
+  fillTable(eBody, emg, e=>`<tr><td>${fmt(e.ts)}</td><td>${e.name}</td><td>${e.grade}</td><td>${e.group||"-"}</td><td>${e.cardId}</td><td>${e.place||""}</td><td>${num(e.lat)}</td><td>${num(e.lng)}</td></tr>`);
+
+  document.getElementById("raw").textContent = JSON.stringify({
+    torica_students: students, torica_guardians: guardians, torica_teachers: teachers, torica_logs: allLogs, torica_emergencies: jget(K.EMERGENCIES,"[]")
+  }, null, 2);
+}
+function fmt(iso){ if(!iso) return ""; const d=new Date(iso); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
+function num(v){ return (typeof v==="number" && !isNaN(v)) ? v.toFixed(5) : ""; }
+function exportJSON(){
+  const blob = new Blob([document.getElementById("raw").textContent], {type: "application/json"});
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `torica_dump_${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);
+}
+function clearTodayLogs(){ const all = jget(K.LOGS,"{}"); all[today()] = []; localStorage.setItem(K.LOGS, JSON.stringify(all)); }
+render(); window.addEventListener("storage", render);
+</script>
+</body></html>

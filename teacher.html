@@ -1,0 +1,121 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa 教師ダッシュボード</title>
+<style>
+:root{--bg:#f5f7fb;--muted:#6b7280;--accent:#2563eb}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px;position:sticky;top:0}
+.brand{font-weight:800}.muted{color:var(--muted)}
+.container{max-width:1100px;margin:18px auto;padding:0 16px}
+.grid{display:grid;grid-template-columns:2fr 1fr;gap:12px}
+.card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:14px}
+h2{margin:0 0 8px;font-size:18px}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+select,button{font:inherit} select{padding:9px;border:1px solid #cbd5e1;border-radius:10px}
+.btn{padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;cursor:pointer}
+.primary{background:var(--accent);color:#fff;border-color:transparent}
+table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}
+.badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#eef2ff;display:inline-block}
+.red{color:#fff;background:#ef4444}
+@media (max-width:900px){.grid{grid-template-columns:1fr}}
+</style>
+</head><body>
+<header>
+  <div><div class="brand">ToriCa 教師</div><div class="muted" id="tinfo">—</div></div>
+  <div>
+    <button class="btn" onclick="location.href='guest.html?card=STU1234&place=校門'">ゲスト表示テスト</button>
+    <button class="btn" onclick="ToriCa.teacherLogout();location.href='teacher_auth.html'">ログアウト</button>
+  </div>
+</header>
+<div class="container">
+  <div class="grid">
+    <section class="card" style="border:2px solid #ef4444">
+      <h2>緊急（優先）</h2>
+      <div id="emgBox" class="muted">未着信</div>
+    </section>
+    <section class="card">
+      <h2>集計</h2>
+      <div class="muted">本日 登校確認</div>
+      <div style="font-size:28px;font-weight:800"><span id="present">0</span> / <span id="total">0</span></div>
+      <div class="controls" style="margin-top:8px">
+        <select id="sortBy">
+          <option value="name">並び：氏名</option>
+          <option value="group">並び：班</option>
+        </select>
+        <button class="btn" id="clearBtn">今日の記録クリア（デモ）</button>
+      </div>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top:12px">
+    <h2>本日のログ</h2>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>時刻</th><th>氏名</th><th>学年</th><th>班</th><th>カード</th><th>地点</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+</div>
+
+<script src="./app.js"></script>
+<script>
+(function(){
+  const sess = ToriCa.teacherSession();
+  if (!sess){ location.href="teacher_auth.html"; return; }
+  document.getElementById("tinfo").textContent = `${sess.name}（${sess.email}）`;
+
+  function render(){
+    // 緊急
+    const emgs = ToriCa.getOpenEmergencies();
+    const emgBox = document.getElementById("emgBox");
+    if (emgs.length===0){
+      emgBox.innerHTML = '<span class="muted">未着信</span>';
+    } else {
+      emgBox.innerHTML = emgs.map(e=>{
+        // lat/lng があるときは Google マップURLに
+        const mapLink = (typeof e.lat==='number' && typeof e.lng==='number')
+          ? `<a href="https://www.google.com/maps/search/?api=1&query=${e.lat},${e.lng}" target="_blank" rel="noopener">Googleマップで開く</a>`
+          : '';
+        return `
+        <div class="card" style="margin-bottom:8px;box-shadow:none;border:1px dashed #ef4444">
+          <div><span class="badge red">緊急</span> ${fmt(e.ts)} / ${e.name}（${e.grade}・班${e.group||"-"}）</div>
+          <div class="muted">カード:${e.cardId} / ${e.place}${mapLink ? " / " + mapLink : ""}</div>
+          <div class="controls" style="margin-top:6px">
+            <button class="btn primary" onclick="ToriCa.closeEmergency('${e.id}')">対応済みにする</button>
+          </div>
+        </div>`;
+      }).join("");
+    }
+
+    // ログ
+    const logs = ToriCa.getTodayLogs();
+    const rows = [...logs];
+    const sortBy = document.getElementById("sortBy").value;
+    if (sortBy==="group"){
+      rows.sort((a,b)=> (a.group||"").localeCompare(b.group||"") || (a.name||"").localeCompare(b.name||""));
+    }else{
+      rows.sort((a,b)=> (a.name||"").localeCompare(b.name||""));
+    }
+    document.getElementById("tbody").innerHTML = rows.map(l=>`
+      <tr>
+        <td>${fmt(l.ts)}</td><td>${l.name}</td><td>${l.grade}</td><td>${l.group||"-"}</td>
+        <td>${l.cardId}</td><td><span class="badge">${l.place}</span></td>
+      </tr>
+    `).join("");
+
+    // 集計（ユニークカード数）
+    const seen = new Set(); rows.forEach(r=>{ if(!seen.has(r.cardId)){ seen.add(r.cardId); }});
+    document.getElementById("present").textContent = seen.size;
+    const students = JSON.parse(localStorage.getItem("torica_students")||"{}");
+    document.getElementById("total").textContent = Object.keys(students).length;
+  }
+  function fmt(iso){ const d=new Date(iso); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
+
+  document.getElementById("sortBy").onchange = render;
+  document.getElementById("clearBtn").onclick = ()=>{ ToriCa.clearTodayLogs(); render(); };
+  window.addEventListener("storage", (ev)=>{ if ([ToriCa.K.LOGS, ToriCa.K.EMERGENCIES].includes(ev.key)) render(); });
+  render();
+})();
+</script>
+</body></html>

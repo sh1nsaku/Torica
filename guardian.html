@@ -1,0 +1,47 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa 保護者ダッシュボード</title>
+<style>
+:root{--bg:#f5f7fb;--muted:#6b7280}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif}
+header{display:flex;justify-content:space-between;align-items:center;background:#fff;border-bottom:1px solid #e5e7eb;padding:12px 16px}
+.container{max-width:900px;margin:18px auto;padding:0 16px}
+.card{background:#fff;border-radius:16px;box-shadow:0 8px 24px rgba(0,0,0,.06);padding:14px}
+table{width:100%;border-collapse:collapse;font-size:14px} th,td{padding:9px;border-bottom:1px solid #e5e7eb;text-align:left;white-space:nowrap}
+.muted{color:var(--muted)} .badge{font-size:11px;padding:3px 8px;border-radius:999px;background:#eef2ff;display:inline-block}
+</style>
+</head><body>
+<header>
+  <div><strong>保護者ダッシュボード</strong> <span class="muted" id="info"></span></div>
+  <div><button onclick="ToriCa.guardianLogout();location.href='guardian_auth.html'">ログアウト</button></div>
+</header>
+<div class="container">
+  <section class="card">
+    <h3>子どもの移動ログ（本日）</h3>
+    <div style="overflow:auto">
+      <table>
+        <thead><tr><th>時刻</th><th>地点</th><th>カードID</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+    <p class="muted">※デモでは本日分のみ表示</p>
+  </section>
+</div>
+
+<script src="./app.js"></script>
+<script>
+(function(){
+  const sess = ToriCa.guardianSession();
+  if (!sess){ location.href="guardian_auth.html"; return; }
+  document.getElementById("info").textContent = `（${sess.email} / カード: ${sess.cardId}）`;
+
+  function render(){
+    const logs = ToriCa.getTodayLogs().filter(l=> l.cardId===sess.cardId);
+    document.getElementById("tbody").innerHTML = logs.map(l=>`<tr><td>${fmt(l.ts)}</td><td><span class="badge">${l.place}</span></td><td>${l.cardId}</td></tr>`).join("");
+  }
+  function fmt(iso){ const d=new Date(iso); const z=n=>String(n).padStart(2,"0"); return `${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`; }
+  render();
+  window.addEventListener("storage", (ev)=>{ if (ev.key===ToriCa.K.LOGS) render(); });
+})();
+</script>
+</body></html>

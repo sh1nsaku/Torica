@@ -1,0 +1,23 @@
+<!DOCTYPE html><html lang="ja"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ToriCa デモ入口</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans JP",Meiryo,sans-serif;margin:0;background:#f5f7fb}
+main{max-width:720px;margin:40px auto;padding:0 16px}
+.card{background:#fff;border-radius:18px;box-shadow:0 10px 30px rgba(0,0,0,.1);padding:20px}
+a.button{display:inline-block;margin:6px 8px 0 0;padding:10px 14px;border-radius:10px;border:1px solid #cbd5e1;background:#fff;text-decoration:none;color:#111}
+a.primary{background:#2563eb;color:#fff;border-color:transparent}
+small{color:#6b7280}
+</style>
+</head><body><main class="card">
+<h1>ToriCa デモ</h1>
+<p>以下から各ページへアクセスしてください。</p>
+<p>
+  <a class="button" href="teacher_auth.html">教師ログイン</a>
+  <a class="button" href="guardian_auth.html">保護者 登録/ログイン</a>
+  <a class="button" href="guest.html?card=STU1234&place=校門">ゲスト（サンプル）</a>
+  <a class="button" href="admin.html">データビューア</a>
+  <a class="button" href="reset_guardians.html">保護者データ初期化</a>
+</p>
+<p><small>※Web NFCはAndroid版Chrome+HTTPSでのみ利用可（このデモはURL遷移で代替）。</small></p>
+</main></body></html>
